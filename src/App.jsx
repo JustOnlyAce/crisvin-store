@@ -121,6 +121,17 @@ export default function App() {
     await loadDebts();
   }
 
+  async function addProduct(product) {
+    const { error } = await supabase.from("products").insert(product);
+    await loadProducts();
+    return error;
+  }
+
+  async function updatePrice(productId, newPrice) {
+    await supabase.from("products").update({ price: newPrice }).eq("id", productId);
+    await loadProducts();
+  }
+
   async function recordDebtPayment(debtId, amount) {
     await supabase.from("debt_payments").insert({ debt_id: debtId, amount });
     await loadDebts();
@@ -153,6 +164,8 @@ export default function App() {
           debts={debts}
           onAdvanceOrder={advanceOrderStatus}
           onUpdateStock={updateStock}
+          onAddProduct={addProduct}
+          onUpdatePrice={updatePrice}
           onAddDebt={addDebt}
           onRecordPayment={recordDebtPayment}
           onSwitchRole={() => setMode(null)}
