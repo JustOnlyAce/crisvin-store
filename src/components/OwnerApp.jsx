@@ -1,10 +1,11 @@
 import React, { useState, useMemo } from "react";
-import { TopBar, EmptyState, StatusPill, StatCard, btnSmall, chip, qtyBtnLight, sectionTitle } from "./styles.jsx";
+import { TopBar, EmptyState, StatusPill, StatCard, btnPrimary, btnSmall, label, input, chip, qtyBtnLight, sectionTitle, linkBtn } from "./styles.jsx";
 import UtangBook from "./UtangBook";
+import { STORE_CONFIG } from "../config/store";
 
 const peso = (n) => `₱${Number(n).toFixed(2)}`;
 
-export default function OwnerApp({ products, orders, debts, onAdvanceOrder, onUpdateStock, onAddDebt, onRecordPayment, onSwitchRole }) {
+export default function OwnerApp({ products, orders, debts, onAdvanceOrder, onUpdateStock, onAddProduct, onUpdatePrice, onAddDebt, onRecordPayment, onSwitchRole }) {
   const [tab, setTab] = useState("orders");
   const pendingCount = orders.filter((o) => o.status === "Pending").length;
 
@@ -71,28 +72,7 @@ export default function OwnerApp({ products, orders, debts, onAdvanceOrder, onUp
         </div>
       )}
 
-      {tab === "products" && (
-        <div style={{ padding: "4px 16px 16px" }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {products.map((p) => (
-              <div key={p.id} style={{ background: "#fff", border: "1px solid #E4DCC9", borderRadius: 12, padding: "12px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div>
-                  <div style={{ fontSize: 13.5, fontWeight: 600 }}>{p.name}</div>
-                  <div style={{ fontSize: 12, color: "#8C6A4A" }}>{p.category} · {peso(p.price)}</div>
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <button onClick={() => onUpdateStock(p.id, -1)} style={qtyBtnLight}>−</button>
-                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 13, minWidth: 22, textAlign: "center", color: p.stock <= 5 ? "#C1440E" : "#2B2620" }}>{p.stock}</span>
-                  <button onClick={() => onUpdateStock(p.id, 1)} style={qtyBtnLight}>+</button>
-                </div>
-              </div>
-            ))}
-          </div>
-          <p style={{ fontSize: 12, color: "#8C6A4A", marginTop: 14, lineHeight: 1.5 }}>
-            Scan a barcode into a "new product" form (coming next) to add items straight from the scanner gun.
-          </p>
-        </div>
-      )}
+      {tab === "products" && <ProductsTab products={products} onUpdateStock={onUpdateStock} onAddProduct={onAddProduct} onUpdatePrice={onUpdatePrice} />}
 
       {tab === "sales" && (
         <div style={{ padding: "4px 16px 16px" }}>
@@ -118,5 +98,146 @@ export default function OwnerApp({ products, orders, debts, onAdvanceOrder, onUp
 
       {tab === "utang" && <UtangBook debts={debts} onAddDebt={onAddDebt} onRecordPayment={onRecordPayment} />}
     </div>
+  );
+}
+
+function ProductsTab({ products, onUpdateStock, onAddProduct, onUpdatePrice }) {
+  const [showForm, setShowForm] = useState(false);
+
+  return (
+    <div style={{ padding: "4px 16px 16px" }}>
+      <button onClick={() => setShowForm((s) => !s)} style={{ ...btnPrimary, width: "100%", marginBottom: 16 }}>
+        {showForm ? "Cancel" : "+ Add new product"}
+      </button>
+
+      {showForm && (
+        <AddProductForm
+          onAdd={async (product) => {
+            const error = await onAddProduct(product);
+            if (!error) setShowForm(false);
+            return error;
+          }}
+        />
+      )}
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {products.map((p) => (
+          <div key={p.id} style={{ background: "#fff", border: "1px solid #E4DCC9", borderRadius: 12, padding: "12px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div>
+              <div style={{ fontSize: 13.5, fontWeight: 600 }}>{p.name}</div>
+              <div style={{ fontSize: 12, color: "#8C6A4A", display: "flex", alignItems: "center", gap: 4 }}>
+                {p.category} · <EditablePrice value={p.price} onSave={(newPrice) => onUpdatePrice(p.id, newPrice)} />
+              </div>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <button onClick={() => onUpdateStock(p.id, -1)} style={qtyBtnLight}>−</button>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 13, minWidth: 22, textAlign: "center", color: p.stock <= STORE_CONFIG.lowStockThreshold ? "#C1440E" : "#2B2620" }}>{p.stock}</span>
+              <button onClick={() => onUpdateStock(p.id, 1)} style={qtyBtnLight}>+</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function AddProductForm({ onAdd }) {
+  const [name, setName] = useState("");
+  const [category, setCategory] = useState(STORE_CONFIG.categories[1] || "");
+  const [price, setPrice] = useState("");
+  const [stock, setStock] = useState("");
+  const [barcode, setBarcode] = useState("");
+  const [error, setError] = useState("");
+  const barcodeRef = React.useRef(null);
+
+  // Auto-focus the barcode field so a scanner gun can fill it in immediately
+  // the moment this form opens, without the owner needing to tap first.
+  React.useEffect(() => {
+    barcodeRef.current?.focus();
+  }, []);
+
+  const canSubmit = name.trim() && Number(price) > 0 && Number(stock) >= 0;
+
+  const handleSubmit = async () => {
+    setError("");
+    const err = await onAdd({
+      name: name.trim(),
+      category,
+      price: Number(price),
+      stock: Number(stock),
+      barcode: barcode.trim() || null,
+    });
+    if (err) {
+      setError(err.code === "23505" ? "That barcode is already used by another product." : "Something went wrong — try again.");
+    }
+  };
+
+  return (
+    <div style={{ background: "#fff", border: "1px solid #E4DCC9", borderRadius: 12, padding: 14, marginBottom: 16 }}>
+      <label style={{ ...label, marginTop: 0 }}>Barcode (scan here, or leave blank)</label>
+      <input ref={barcodeRef} value={barcode} onChange={(e) => setBarcode(e.target.value)} placeholder="Scan or type barcode" style={input} />
+
+      <label style={label}>Product name</label>
+      <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Lucky Me Pancit Canton" style={input} />
+
+      <label style={label}>Category</label>
+      <select value={category} onChange={(e) => setCategory(e.target.value)} style={{ ...input, appearance: "auto" }}>
+        {STORE_CONFIG.categories.filter((c) => c !== "All").map((c) => (
+          <option key={c} value={c}>{c}</option>
+        ))}
+      </select>
+
+      <div style={{ display: "flex", gap: 10 }}>
+        <div style={{ flex: 1 }}>
+          <label style={label}>Price (₱)</label>
+          <input value={price} onChange={(e) => setPrice(e.target.value)} type="number" placeholder="0.00" style={input} />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label style={label}>Starting stock</label>
+          <input value={stock} onChange={(e) => setStock(e.target.value)} type="number" placeholder="0" style={input} />
+        </div>
+      </div>
+
+      {error && <p style={{ color: "#C1440E", fontSize: 12.5, marginTop: 10 }}>{error}</p>}
+
+      <button
+        disabled={!canSubmit}
+        onClick={handleSubmit}
+        style={{ ...btnPrimary, width: "100%", marginTop: 16, opacity: canSubmit ? 1 : 0.4, cursor: canSubmit ? "pointer" : "not-allowed" }}
+      >
+        Save product
+      </button>
+    </div>
+  );
+}
+
+function EditablePrice({ value, onSave }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+
+  if (!editing) {
+    return (
+      <button onClick={() => { setDraft(value); setEditing(true); }} style={{ ...linkBtn, color: "#2F5233", fontWeight: 700 }}>
+        {peso(value)} ✎
+      </button>
+    );
+  }
+
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+      <input
+        autoFocus
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        type="number"
+        style={{ width: 70, padding: "2px 6px", fontSize: 12, border: "1px solid #E4DCC9", borderRadius: 6 }}
+      />
+      <button
+        onClick={() => { onSave(Number(draft)); setEditing(false); }}
+        style={{ ...linkBtn, color: "#2F5233", fontWeight: 700 }}
+      >
+        Save
+      </button>
+    </span>
   );
 }
