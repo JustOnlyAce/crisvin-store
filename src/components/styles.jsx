@@ -15,9 +15,12 @@ export const payToggleActive = { border: "1.5px solid #2F5233", background: "#E7
 export function TopBar({ title, subtitle, onSwitchRole }) {
   return (
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "18px 16px 8px", maxWidth: 480, margin: "0 auto" }}>
-      <div>
-        <div style={{ fontFamily: "'Fraunces', serif", fontWeight: 600, fontSize: 19, color: "#2F5233" }}>{title}</div>
-        <div style={{ fontSize: 12, color: "#8C6A4A" }}>{subtitle}</div>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <img src="/icon-192.png" alt="" style={{ width: 36, height: 36, borderRadius: 9, objectFit: "cover" }} />
+        <div>
+          <div style={{ fontFamily: "'Fraunces', serif", fontWeight: 600, fontSize: 19, color: "#2F5233" }}>{title}</div>
+          <div style={{ fontSize: 12, color: "#8C6A4A" }}>{subtitle}</div>
+        </div>
       </div>
       <button onClick={onSwitchRole} style={linkBtn}>Switch</button>
     </div>

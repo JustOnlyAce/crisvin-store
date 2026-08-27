@@ -5,12 +5,7 @@ import { STORE_CONFIG } from "../config/store";
 export function RoleGate({ onPick }) {
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, textAlign: "center" }}>
-      <div style={{ fontFamily: "'Fraunces', serif", fontWeight: 600, fontSize: 15, letterSpacing: "0.14em", textTransform: "uppercase", color: "#8C6A4A" }}>
-        {STORE_CONFIG.tagline}
-      </div>
-      <h1 style={{ fontFamily: "'Fraunces', serif", fontWeight: 600, fontSize: 44, margin: "8px 0 6px", color: "#2F5233" }}>
-        {STORE_CONFIG.name}
-      </h1>
+      <img src="/logo.png" alt={STORE_CONFIG.name} style={{ width: 200, height: 200, objectFit: "contain", marginBottom: 8 }} />
       <p style={{ maxWidth: 320, color: "#5B5346", marginBottom: 36, fontSize: 15, lineHeight: 1.5 }}>
         Order ahead, skip the line. Pick how you're using the app today.
       </p>
