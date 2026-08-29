@@ -11,6 +11,7 @@ create table products (
   price numeric(10,2) not null,
   stock integer not null default 0,
   barcode text unique,           -- for the scanner gun: scan fills this field
+  image_url text,                -- product photo, auto-filled from barcode lookup or added manually
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
@@ -77,6 +78,15 @@ alter table orders enable row level security;
 alter table order_items enable row level security;
 alter table debts enable row level security;
 alter table debt_payments enable row level security;
+
+-- ---------- Grants ----------
+-- Needed because "Automatically expose new tables" is off in this project
+-- (a safer default). Without this, PostgREST returns 401 even though RLS
+-- policies below would otherwise allow access.
+grant usage on schema public to anon, authenticated;
+grant select, insert, update, delete on all tables in schema public to anon, authenticated;
+grant all on all sequences in schema public to anon, authenticated;
+alter default privileges in schema public grant select, insert, update, delete on tables to anon, authenticated;
 
 create policy "public read products" on products for select using (true);
 create policy "public write products" on products for all using (true) with check (true);

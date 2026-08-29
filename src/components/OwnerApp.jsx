@@ -1,14 +1,22 @@
 import React, { useState, useMemo } from "react";
-import { TopBar, EmptyState, StatusPill, StatCard, btnPrimary, btnSmall, label, input, chip, qtyBtnLight, sectionTitle, linkBtn } from "./styles.jsx";
+import { TopBar, EmptyState, StatusPill, StatCard, btnPrimary, btnSmall, label, input, chip, qtyBtnLight, sectionTitle, linkBtn, PrintStyles } from "./styles.jsx";
 import UtangBook from "./UtangBook";
 import { STORE_CONFIG } from "../config/store";
 import { lookupBarcode } from "../lib/productLookup";
+import Receipt from "./Receipt";
 
 const peso = (n) => `₱${Number(n).toFixed(2)}`;
 
 export default function OwnerApp({ products, orders, debts, onAdvanceOrder, onUpdateStock, onAddProduct, onUpdatePrice, onAddDebt, onRecordPayment, onSwitchRole }) {
   const [tab, setTab] = useState("orders");
+  const [printingOrder, setPrintingOrder] = useState(null);
   const pendingCount = orders.filter((o) => o.status === "Pending").length;
+
+  const handlePrint = (order) => {
+    setPrintingOrder(order);
+    // give React a moment to render the receipt content before the print dialog opens
+    setTimeout(() => window.print(), 100);
+  };
 
   const today = new Date().toDateString();
   const todaysOrders = orders.filter((o) => new Date(o.placed_at).toDateString() === today);
@@ -21,6 +29,8 @@ export default function OwnerApp({ products, orders, debts, onAdvanceOrder, onUp
 
   return (
     <div style={{ paddingBottom: 84, minHeight: "100vh" }}>
+      <PrintStyles />
+      <Receipt order={printingOrder} />
       <TopBar title="Crisvin Store" subtitle="Owner dashboard" onSwitchRole={onSwitchRole} />
 
       <div style={{ display: "flex", gap: 8, padding: "12px 16px", overflowX: "auto" }}>
@@ -58,13 +68,18 @@ export default function OwnerApp({ products, orders, debts, onAdvanceOrder, onUp
                       </div>
                     ))}
                   </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
                     <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, color: "#2F5233" }}>{peso(o.total)}</span>
-                    {o.status !== "Completed" && (
-                      <button onClick={() => onAdvanceOrder(o.id, o.status)} style={btnSmall}>
-                        {o.status === "Pending" ? "Mark Ready" : "Mark Completed"}
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button onClick={() => handlePrint(o)} style={{ ...btnSmall, background: "#8C6A4A", width: "auto", padding: "8px 12px" }}>
+                        🖨 Print
                       </button>
-                    )}
+                      {o.status !== "Completed" && (
+                        <button onClick={() => onAdvanceOrder(o.id, o.status)} style={{ ...btnSmall, width: "auto", padding: "8px 12px" }}>
+                          {o.status === "Pending" ? "Mark Ready" : "Mark Completed"}
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
@@ -123,8 +138,15 @@ function ProductsTab({ products, onUpdateStock, onAddProduct, onUpdatePrice }) {
 
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {products.map((p) => (
-          <div key={p.id} style={{ background: "#fff", border: "1px solid #E4DCC9", borderRadius: 12, padding: "12px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div>
+          <div key={p.id} style={{ background: "#fff", border: "1px solid #E4DCC9", borderRadius: 12, padding: "12px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+            <div style={{ width: 40, height: 40, borderRadius: 8, background: "#EFEAE0", flexShrink: 0, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              {p.image_url ? (
+                <img src={p.image_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              ) : (
+                <span style={{ fontSize: 16 }}>📦</span>
+              )}
+            </div>
+            <div style={{ flex: 1 }}>
               <div style={{ fontSize: 13.5, fontWeight: 600 }}>{p.name}</div>
               <div style={{ fontSize: 12, color: "#8C6A4A", display: "flex", alignItems: "center", gap: 4 }}>
                 {p.category} · <EditablePrice value={p.price} onSave={(newPrice) => onUpdatePrice(p.id, newPrice)} />
@@ -148,6 +170,7 @@ function AddProductForm({ onAdd }) {
   const [price, setPrice] = useState("");
   const [stock, setStock] = useState("");
   const [barcode, setBarcode] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
   const [error, setError] = useState("");
   const [lookupStatus, setLookupStatus] = useState(""); // "", "looking", "found", "not-found"
   const barcodeRef = React.useRef(null);
@@ -171,6 +194,7 @@ function AddProductForm({ onAdd }) {
     if (result) {
       setName(result.name);
       if (result.category) setCategory(result.category);
+      if (result.imageUrl) setImageUrl(result.imageUrl);
       setLookupStatus("found");
     } else {
       setLookupStatus("not-found");
@@ -185,6 +209,7 @@ function AddProductForm({ onAdd }) {
       price: Number(price),
       stock: Number(stock),
       barcode: barcode.trim() || null,
+      image_url: imageUrl.trim() || null,
     });
     if (err) {
       setError(err.code === "23505" ? "That barcode is already used by another product." : "Something went wrong — try again.");
@@ -204,7 +229,7 @@ function AddProductForm({ onAdd }) {
       />
       {lookupStatus === "looking" && <p style={{ fontSize: 12, color: "#8C6A4A", marginTop: 6 }}>Looking up product…</p>}
       {lookupStatus === "found" && <p style={{ fontSize: 12, color: "#2F5233", marginTop: 6 }}>✓ Found it — double-check the details below.</p>}
-      {lookupStatus === "not-found" && <p style={{ fontSize: 12, color: "#8C6A4A", marginTop: 6 }}>Not found in the product database — please fill in the details below manually.</p>}
+      {lookupStatus === "not-found" && <p style={{ fontSize: 12, color: "#8C6A4A", marginTop: 6 }}>Not found in the product database — please fill in the details below manually. (It'll be remembered for every scan after this one.)</p>}
 
       <label style={label}>Product name</label>
       <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Lucky Me Pancit Canton" style={input} />
@@ -225,6 +250,23 @@ function AddProductForm({ onAdd }) {
           <label style={label}>Starting stock</label>
           <input value={stock} onChange={(e) => setStock(e.target.value)} type="number" placeholder="0" style={input} />
         </div>
+      </div>
+
+      <label style={label}>Product photo</label>
+      <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+        <div style={{ width: 56, height: 56, borderRadius: 8, background: "#EFEAE0", flexShrink: 0, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          {imageUrl ? (
+            <img src={imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={() => setImageUrl("")} />
+          ) : (
+            <span style={{ fontSize: 20 }}>📦</span>
+          )}
+        </div>
+        <input
+          value={imageUrl}
+          onChange={(e) => setImageUrl(e.target.value)}
+          placeholder="Auto-filled from scan, or paste an image link"
+          style={{ ...input, flex: 1 }}
+        />
       </div>
 
       {error && <p style={{ color: "#C1440E", fontSize: 12.5, marginTop: 10 }}>{error}</p>}

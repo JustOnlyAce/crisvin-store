@@ -1,8 +1,9 @@
-// Looks up a scanned barcode against Open Food Facts, a free, public,
-// crowd-sourced product database (no API key needed). Best coverage is for
-// globally distributed packaged food/drinks; local-only Filipino products
-// and non-food items (soap, detergent, etc.) often won't be found — that's
-// expected, the owner can still fill those in by hand.
+// Looks up a scanned barcode against two free, public product databases
+// (no API key needed for either). Coverage is best for globally distributed
+// packaged food/drinks; small local-only Filipino products and non-food
+// items often won't be found in either — that's expected. Once a product
+// is added once, it lives in Crisvin Store's own database from then on, so
+// this lookup only matters the very first time a given item is scanned.
 
 const CATEGORY_KEYWORDS = {
   "Beverages": ["beverage", "drink", "juice", "soda", "water", "coffee", "tea", "milk"],
@@ -12,26 +13,52 @@ const CATEGORY_KEYWORDS = {
   "Household": ["detergent", "cleaning", "soap", "household"],
 };
 
-function guessCategory(offCategories = []) {
-  const text = offCategories.join(" ").toLowerCase();
+function guessCategory(text = "") {
+  const lower = text.toLowerCase();
   for (const [ourCategory, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
-    if (keywords.some((kw) => text.includes(kw))) return ourCategory;
+    if (keywords.some((kw) => lower.includes(kw))) return ourCategory;
   }
   return null;
 }
 
-export async function lookupBarcode(barcode) {
+async function lookupOpenFoodFacts(barcode) {
   try {
     const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(barcode)}.json`);
     const data = await res.json();
     if (data.status !== 1 || !data.product) return null;
-
     const name = data.product.product_name || data.product.product_name_en || null;
-    const category = guessCategory(data.product.categories_tags || []);
     if (!name) return null;
-
-    return { name, category };
+    return {
+      name,
+      category: guessCategory((data.product.categories_tags || []).join(" ")),
+      imageUrl: data.product.image_front_url || data.product.image_url || null,
+    };
   } catch {
-    return null; // network hiccup or unrecognized barcode — fail quietly, owner fills in manually
+    return null;
   }
 }
+
+async function lookupUpcItemDb(barcode) {
+  try {
+    const res = await fetch(`https://api.upcitemdb.com/prod/trial/lookup?upc=${encodeURIComponent(barcode)}`);
+    const data = await res.json();
+    const item = data.items?.[0];
+    if (!item || !item.title) return null;
+    return {
+      name: item.title,
+      category: guessCategory(item.category || ""),
+      imageUrl: item.images?.[0] || null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function lookupBarcode(barcode) {
+  // Try Open Food Facts first (best for food/drink), then fall back to
+  // UPCitemdb (broader general-merchandise coverage) if nothing found.
+  const fromOpenFoodFacts = await lookupOpenFoodFacts(barcode);
+  if (fromOpenFoodFacts) return fromOpenFoodFacts;
+  return await lookupUpcItemDb(barcode);
+}
+

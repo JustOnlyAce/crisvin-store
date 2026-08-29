@@ -48,6 +48,11 @@ export default function CustomerApp({ customer, products, orders, onPlaceOrder, 
               const outOfStock = p.stock === 0;
               return (
                 <div key={p.id} style={productCard}>
+                  {p.image_url ? (
+                    <img src={p.image_url} alt="" style={{ width: "100%", height: 80, objectFit: "cover", borderRadius: 8, marginBottom: 8 }} />
+                  ) : (
+                    <div style={{ width: "100%", height: 80, borderRadius: 8, background: "#EFEAE0", marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 }}>📦</div>
+                  )}
                   <span style={{ fontSize: 11, color: p.stock <= STORE_CONFIG.lowStockThreshold && !outOfStock ? "#C1440E" : "#8C6A4A", fontWeight: 600 }}>
                     {outOfStock ? "OUT OF STOCK" : p.stock <= STORE_CONFIG.lowStockThreshold ? `Only ${p.stock} left` : "In stock"}
                   </span>
