@@ -12,7 +12,35 @@ export const sectionTitle = { fontFamily: "'Fraunces', serif", fontWeight: 600, 
 export const payToggle = { flex: 1, border: "1.5px solid #E4DCC9", background: "#fff", borderRadius: 9, padding: "11px 8px", fontSize: 12.5, fontWeight: 600, color: "#5B5346", cursor: "pointer" };
 export const payToggleActive = { border: "1.5px solid #2F5233", background: "#E7EEE3", color: "#2F5233" };
 
-export function TopBar({ title, subtitle, onSwitchRole }) {
+// Renders global CSS so #receipt-print-area is invisible on screen but is
+// the ONLY thing shown when window.print() runs (RawBT on Android intercepts
+// that print job and sends it to the Bluetooth thermal printer).
+export function PrintStyles() {
+  return (
+    <style>{`
+      #receipt-print-area {
+        display: none;
+      }
+      @media print {
+        body * { visibility: hidden; }
+        #receipt-print-area, #receipt-print-area * { visibility: visible; }
+        #receipt-print-area {
+          display: block;
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 58mm;
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 11px;
+          color: #000;
+          padding: 4px;
+        }
+      }
+    `}</style>
+  );
+}
+
+export function TopBar({ title, subtitle, onSwitchRole, extraAction }) {
   return (
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "18px 16px 8px", maxWidth: 480, margin: "0 auto" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -22,7 +50,10 @@ export function TopBar({ title, subtitle, onSwitchRole }) {
           <div style={{ fontSize: 12, color: "#8C6A4A" }}>{subtitle}</div>
         </div>
       </div>
-      <button onClick={onSwitchRole} style={linkBtn}>Switch</button>
+      <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
+        {extraAction && <button onClick={extraAction.onClick} style={linkBtn}>{extraAction.label}</button>}
+        <button onClick={onSwitchRole} style={linkBtn}>Switch</button>
+      </div>
     </div>
   );
 }

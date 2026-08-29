@@ -7,7 +7,7 @@ import Receipt from "./Receipt";
 
 const peso = (n) => `₱${Number(n).toFixed(2)}`;
 
-export default function OwnerApp({ products, orders, debts, onAdvanceOrder, onUpdateStock, onAddProduct, onUpdatePrice, onAddDebt, onRecordPayment, onSwitchRole }) {
+export default function OwnerApp({ products, orders, debts, onAdvanceOrder, onUpdateStock, onAddProduct, onUpdatePrice, onAddDebt, onRecordPayment, onSwitchRole, onLock }) {
   const [tab, setTab] = useState("orders");
   const [printingOrder, setPrintingOrder] = useState(null);
   const pendingCount = orders.filter((o) => o.status === "Pending").length;
@@ -31,7 +31,7 @@ export default function OwnerApp({ products, orders, debts, onAdvanceOrder, onUp
     <div style={{ paddingBottom: 84, minHeight: "100vh" }}>
       <PrintStyles />
       <Receipt order={printingOrder} />
-      <TopBar title="Crisvin Store" subtitle="Owner dashboard" onSwitchRole={onSwitchRole} />
+      <TopBar title="Crisvin Store" subtitle="Owner dashboard" onSwitchRole={onSwitchRole} extraAction={{ label: "Lock", onClick: onLock }} />
 
       <div style={{ display: "flex", gap: 8, padding: "12px 16px", overflowX: "auto" }}>
         {[

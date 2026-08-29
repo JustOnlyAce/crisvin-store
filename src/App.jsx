@@ -5,6 +5,7 @@ import { STORE_CONFIG } from "./config/store";
 import { RoleGate, CustomerLogin } from "./components/Onboarding";
 import CustomerApp from "./components/CustomerApp";
 import OwnerApp from "./components/OwnerApp";
+import OwnerPinGate from "./components/OwnerPinGate";
 
 const FONT_IMPORT = `
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap');
@@ -16,6 +17,7 @@ const genCode = () => "CS-" + Math.floor(1000 + Math.random() * 9000);
 export default function App() {
   const [mode, setMode] = useState(null); // 'customer' | 'owner'
   const [customer, setCustomer] = useState(null);
+  const [ownerUnlocked, setOwnerUnlocked] = useState(() => localStorage.getItem("crisvin_owner_unlocked") === "true");
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
   const [debts, setDebts] = useState([]);
@@ -157,6 +159,8 @@ export default function App() {
             setCustomer(null);
           }}
         />
+      ) : mode === "owner" && !ownerUnlocked ? (
+        <OwnerPinGate onUnlock={() => setOwnerUnlocked(true)} onBack={() => setMode(null)} />
       ) : (
         <OwnerApp
           products={products}
@@ -169,6 +173,11 @@ export default function App() {
           onAddDebt={addDebt}
           onRecordPayment={recordDebtPayment}
           onSwitchRole={() => setMode(null)}
+          onLock={() => {
+            setOwnerUnlocked(false);
+            localStorage.removeItem("crisvin_owner_unlocked");
+            setMode(null);
+          }}
         />
       )}
     </div>
