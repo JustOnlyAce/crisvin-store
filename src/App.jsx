@@ -134,6 +134,31 @@ export default function App() {
     await loadProducts();
   }
 
+  // Records an in-person sale rung up via barcode scanning at the Quick
+  // Sale tab. Stock has already been decremented live as each item was
+  // scanned — this just creates the order record so it shows up correctly
+  // in the Sales tab's totals and best-sellers list, same as online orders.
+  async function recordWalkInSale(items, total) {
+    const { data: order } = await supabase
+      .from("orders")
+      .insert({ code: genCode(), customer_id: null, payment_method: "cash", total, status: "Completed" })
+      .select()
+      .single();
+
+    await supabase.from("order_items").insert(
+      items.map((i) => ({
+        order_id: order.id,
+        product_id: i.id,
+        product_name: i.name,
+        unit_price: i.price,
+        quantity: i.qty,
+      }))
+    );
+
+    await loadOrders();
+    return order;
+  }
+
   async function recordDebtPayment(debtId, amount) {
     await supabase.from("debt_payments").insert({ debt_id: debtId, amount });
     await loadDebts();
@@ -170,6 +195,7 @@ export default function App() {
           onUpdateStock={updateStock}
           onAddProduct={addProduct}
           onUpdatePrice={updatePrice}
+          onFinishSale={recordWalkInSale}
           onAddDebt={addDebt}
           onRecordPayment={recordDebtPayment}
           onSwitchRole={() => setMode(null)}

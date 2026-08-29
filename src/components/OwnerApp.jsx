@@ -4,10 +4,11 @@ import UtangBook from "./UtangBook";
 import { STORE_CONFIG } from "../config/store";
 import { lookupBarcode } from "../lib/productLookup";
 import Receipt from "./Receipt";
+import QuickSale from "./QuickSale";
 
 const peso = (n) => `₱${Number(n).toFixed(2)}`;
 
-export default function OwnerApp({ products, orders, debts, onAdvanceOrder, onUpdateStock, onAddProduct, onUpdatePrice, onAddDebt, onRecordPayment, onSwitchRole, onLock }) {
+export default function OwnerApp({ products, orders, debts, onAdvanceOrder, onUpdateStock, onAddProduct, onUpdatePrice, onFinishSale, onAddDebt, onRecordPayment, onSwitchRole, onLock }) {
   const [tab, setTab] = useState("orders");
   const [printingOrder, setPrintingOrder] = useState(null);
   const pendingCount = orders.filter((o) => o.status === "Pending").length;
@@ -36,6 +37,7 @@ export default function OwnerApp({ products, orders, debts, onAdvanceOrder, onUp
       <div style={{ display: "flex", gap: 8, padding: "12px 16px", overflowX: "auto" }}>
         {[
           { id: "orders", label: `Orders${pendingCount ? ` (${pendingCount})` : ""}` },
+          { id: "quicksale", label: "Quick Sale" },
           { id: "products", label: "Products" },
           { id: "sales", label: "Sales" },
           { id: "utang", label: "Utang Book" },
@@ -58,8 +60,8 @@ export default function OwnerApp({ products, orders, debts, onAdvanceOrder, onUp
                     <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 13 }}>{o.code}</span>
                     <StatusPill status={o.status} />
                   </div>
-                  <div style={{ fontSize: 13.5, fontWeight: 600 }}>{o.customers?.name}</div>
-                  <div style={{ fontSize: 12, color: "#8C6A4A", marginBottom: 8 }}>{o.customers?.phone} · {o.payment_method === "cash" ? "Cash on pickup" : "GCash/Bank"}</div>
+                  <div style={{ fontSize: 13.5, fontWeight: 600 }}>{o.customers?.name || "Walk-in customer"}</div>
+                  <div style={{ fontSize: 12, color: "#8C6A4A", marginBottom: 8 }}>{o.customers?.phone ? `${o.customers.phone} · ` : ""}{o.payment_method === "cash" ? "Cash" : "GCash/Bank"}</div>
                   <div style={{ borderTop: "1px dashed #E4DCC9", paddingTop: 8, marginBottom: 8 }}>
                     {o.order_items.map((i) => (
                       <div key={i.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, padding: "3px 0" }}>
@@ -87,6 +89,8 @@ export default function OwnerApp({ products, orders, debts, onAdvanceOrder, onUp
           )}
         </div>
       )}
+
+      {tab === "quicksale" && <QuickSale products={products} onUpdateStock={onUpdateStock} onFinishSale={onFinishSale} />}
 
       {tab === "products" && <ProductsTab products={products} onUpdateStock={onUpdateStock} onAddProduct={onAddProduct} onUpdatePrice={onUpdatePrice} />}
 
