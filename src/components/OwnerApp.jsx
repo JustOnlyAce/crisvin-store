@@ -2,6 +2,7 @@ import React, { useState, useMemo } from "react";
 import { TopBar, EmptyState, StatusPill, StatCard, btnPrimary, btnSmall, label, input, chip, qtyBtnLight, sectionTitle, linkBtn } from "./styles.jsx";
 import UtangBook from "./UtangBook";
 import { STORE_CONFIG } from "../config/store";
+import { lookupBarcode } from "../lib/productLookup";
 
 const peso = (n) => `₱${Number(n).toFixed(2)}`;
 
@@ -148,6 +149,7 @@ function AddProductForm({ onAdd }) {
   const [stock, setStock] = useState("");
   const [barcode, setBarcode] = useState("");
   const [error, setError] = useState("");
+  const [lookupStatus, setLookupStatus] = useState(""); // "", "looking", "found", "not-found"
   const barcodeRef = React.useRef(null);
 
   // Auto-focus the barcode field so a scanner gun can fill it in immediately
@@ -157,6 +159,23 @@ function AddProductForm({ onAdd }) {
   }, []);
 
   const canSubmit = name.trim() && Number(price) > 0 && Number(stock) >= 0;
+
+  // Scanner guns send the barcode digits then an Enter keypress automatically —
+  // use that Enter as the signal to look up the product, same as if the owner
+  // finished typing it by hand and pressed Enter to confirm.
+  const handleBarcodeKeyDown = async (e) => {
+    if (e.key !== "Enter" || !barcode.trim()) return;
+    e.preventDefault();
+    setLookupStatus("looking");
+    const result = await lookupBarcode(barcode.trim());
+    if (result) {
+      setName(result.name);
+      if (result.category) setCategory(result.category);
+      setLookupStatus("found");
+    } else {
+      setLookupStatus("not-found");
+    }
+  };
 
   const handleSubmit = async () => {
     setError("");
@@ -175,7 +194,17 @@ function AddProductForm({ onAdd }) {
   return (
     <div style={{ background: "#fff", border: "1px solid #E4DCC9", borderRadius: 12, padding: 14, marginBottom: 16 }}>
       <label style={{ ...label, marginTop: 0 }}>Barcode (scan here, or leave blank)</label>
-      <input ref={barcodeRef} value={barcode} onChange={(e) => setBarcode(e.target.value)} placeholder="Scan or type barcode" style={input} />
+      <input
+        ref={barcodeRef}
+        value={barcode}
+        onChange={(e) => { setBarcode(e.target.value); setLookupStatus(""); }}
+        onKeyDown={handleBarcodeKeyDown}
+        placeholder="Scan or type barcode, then press Enter"
+        style={input}
+      />
+      {lookupStatus === "looking" && <p style={{ fontSize: 12, color: "#8C6A4A", marginTop: 6 }}>Looking up product…</p>}
+      {lookupStatus === "found" && <p style={{ fontSize: 12, color: "#2F5233", marginTop: 6 }}>✓ Found it — double-check the details below.</p>}
+      {lookupStatus === "not-found" && <p style={{ fontSize: 12, color: "#8C6A4A", marginTop: 6 }}>Not found in the product database — please fill in the details below manually.</p>}
 
       <label style={label}>Product name</label>
       <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Lucky Me Pancit Canton" style={input} />
