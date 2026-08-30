@@ -12,6 +12,7 @@ create table products (
   stock integer not null default 0,
   barcode text unique,           -- for the scanner gun: scan fills this field
   image_url text,                -- product photo, auto-filled from barcode lookup or added manually
+  is_active boolean not null default true, -- soft-delete: false = hidden from customers but order history stays intact
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );

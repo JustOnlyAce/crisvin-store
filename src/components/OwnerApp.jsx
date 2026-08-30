@@ -8,7 +8,7 @@ import QuickSale from "./QuickSale";
 
 const peso = (n) => `₱${Number(n).toFixed(2)}`;
 
-export default function OwnerApp({ products, orders, debts, onAdvanceOrder, onUpdateStock, onAddProduct, onUpdatePrice, onFinishSale, onAddDebt, onRecordPayment, onSwitchRole }) {
+export default function OwnerApp({ products, orders, debts, onAdvanceOrder, onUpdateStock, onAddProduct, onUpdatePrice, onUpdateProduct, onDeleteProduct, onFinishSale, onAddDebt, onRecordPayment, onSwitchRole }) {
   const [tab, setTab] = useState("orders");
   const [printingOrder, setPrintingOrder] = useState(null);
   const pendingCount = orders.filter((o) => o.status === "Pending").length;
@@ -92,7 +92,7 @@ export default function OwnerApp({ products, orders, debts, onAdvanceOrder, onUp
 
       {tab === "quicksale" && <QuickSale products={products} onUpdateStock={onUpdateStock} onFinishSale={onFinishSale} onPrint={handlePrint} />}
 
-      {tab === "products" && <ProductsTab products={products} onUpdateStock={onUpdateStock} onAddProduct={onAddProduct} onUpdatePrice={onUpdatePrice} />}
+      {tab === "products" && <ProductsTab products={products} onUpdateStock={onUpdateStock} onAddProduct={onAddProduct} onUpdatePrice={onUpdatePrice} onUpdateProduct={onUpdateProduct} onDeleteProduct={onDeleteProduct} />}
 
       {tab === "sales" && (
         <div style={{ padding: "4px 16px 16px" }}>
@@ -121,8 +121,9 @@ export default function OwnerApp({ products, orders, debts, onAdvanceOrder, onUp
   );
 }
 
-function ProductsTab({ products, onUpdateStock, onAddProduct, onUpdatePrice }) {
+function ProductsTab({ products, onUpdateStock, onAddProduct, onUpdatePrice, onUpdateProduct, onDeleteProduct }) {
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState(null);
 
   return (
     <div style={{ padding: "4px 16px 16px" }}>
@@ -142,27 +143,121 @@ function ProductsTab({ products, onUpdateStock, onAddProduct, onUpdatePrice }) {
 
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {products.map((p) => (
-          <div key={p.id} style={{ background: "#fff", border: "1px solid #E4DCC9", borderRadius: 12, padding: "12px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-            <div style={{ width: 40, height: 40, borderRadius: 8, background: "#EFEAE0", flexShrink: 0, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              {p.image_url ? (
-                <img src={p.image_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-              ) : (
-                <span style={{ fontSize: 16 }}>📦</span>
-              )}
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13.5, fontWeight: 600 }}>{p.name}</div>
-              <div style={{ fontSize: 12, color: "#8C6A4A", display: "flex", alignItems: "center", gap: 4 }}>
-                {p.category} · <EditablePrice value={p.price} onSave={(newPrice) => onUpdatePrice(p.id, newPrice)} />
+          <div key={p.id} style={{ background: "#fff", border: "1px solid #E4DCC9", borderRadius: 12, padding: "12px 14px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+              <div style={{ width: 40, height: 40, borderRadius: 8, background: "#EFEAE0", flexShrink: 0, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                {p.image_url ? (
+                  <img src={p.image_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                ) : (
+                  <span style={{ fontSize: 16 }}>📦</span>
+                )}
               </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13.5, fontWeight: 600 }}>{p.name}</div>
+                <div style={{ fontSize: 12, color: "#8C6A4A", display: "flex", alignItems: "center", gap: 4 }}>
+                  {p.category} · <EditablePrice value={p.price} onSave={(newPrice) => onUpdatePrice(p.id, newPrice)} />
+                </div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <button onClick={() => onUpdateStock(p.id, -1)} style={qtyBtnLight}>−</button>
+                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 13, minWidth: 22, textAlign: "center", color: p.stock <= STORE_CONFIG.lowStockThreshold ? "#C1440E" : "#2B2620" }}>{p.stock}</span>
+                <button onClick={() => onUpdateStock(p.id, 1)} style={qtyBtnLight}>+</button>
+              </div>
+              <button
+                onClick={() => setEditingId(editingId === p.id ? null : p.id)}
+                style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, padding: 4, color: "#8C6A4A" }}
+                aria-label="Product settings"
+              >
+                ⚙️
+              </button>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <button onClick={() => onUpdateStock(p.id, -1)} style={qtyBtnLight}>−</button>
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 13, minWidth: 22, textAlign: "center", color: p.stock <= STORE_CONFIG.lowStockThreshold ? "#C1440E" : "#2B2620" }}>{p.stock}</span>
-              <button onClick={() => onUpdateStock(p.id, 1)} style={qtyBtnLight}>+</button>
-            </div>
+
+            {editingId === p.id && (
+              <ProductSettingsPanel
+                product={p}
+                onSave={async (fields) => {
+                  await onUpdateProduct(p.id, fields);
+                  setEditingId(null);
+                }}
+                onDelete={async () => {
+                  await onDeleteProduct(p.id);
+                  setEditingId(null);
+                }}
+                onCancel={() => setEditingId(null)}
+              />
+            )}
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function ProductSettingsPanel({ product, onSave, onDelete, onCancel }) {
+  const [name, setName] = useState(product.name);
+  const [category, setCategory] = useState(product.category);
+  const [price, setPrice] = useState(product.price);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const canSave = name.trim() && Number(price) > 0;
+
+  return (
+    <div style={{ borderTop: "1px solid #E4DCC9", marginTop: 12, paddingTop: 12 }}>
+      <label style={{ ...label, marginTop: 0 }}>Product name</label>
+      <input value={name} onChange={(e) => setName(e.target.value)} style={input} />
+
+      <label style={label}>Category</label>
+      <select value={category} onChange={(e) => setCategory(e.target.value)} style={{ ...input, appearance: "auto" }}>
+        {STORE_CONFIG.categories.filter((c) => c !== "All").map((c) => (
+          <option key={c} value={c}>{c}</option>
+        ))}
+      </select>
+
+      <label style={label}>Price (₱)</label>
+      <input value={price} onChange={(e) => setPrice(e.target.value)} type="number" style={input} />
+
+      <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+        <button onClick={onCancel} style={{ ...linkBtn, flex: 1, textAlign: "center", padding: "10px" }}>Cancel</button>
+        <button
+          disabled={!canSave || saving}
+          onClick={async () => {
+            setSaving(true);
+            await onSave({ name: name.trim(), category, price: Number(price) });
+            setSaving(false);
+          }}
+          style={{ ...btnPrimary, flex: 2, opacity: canSave ? 1 : 0.4 }}
+        >
+          {saving ? "Saving…" : "Save changes"}
+        </button>
+      </div>
+
+      <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px dashed #E4DCC9" }}>
+        {!confirmingDelete ? (
+          <button onClick={() => setConfirmingDelete(true)} style={{ ...linkBtn, color: "#C1440E", width: "100%", textAlign: "center" }}>
+            Delete this product
+          </button>
+        ) : (
+          <div style={{ textAlign: "center" }}>
+            <p style={{ fontSize: 12.5, color: "#C1440E", marginBottom: 10 }}>
+              Delete "{product.name}"? It'll disappear from the shop and your product list. Past orders that included it are unaffected.
+            </p>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={() => setConfirmingDelete(false)} style={{ ...linkBtn, flex: 1, textAlign: "center", padding: "10px" }}>Keep it</button>
+              <button
+                disabled={deleting}
+                onClick={async () => {
+                  setDeleting(true);
+                  await onDelete();
+                }}
+                style={{ ...btnPrimary, flex: 1, background: "#C1440E" }}
+              >
+                {deleting ? "Deleting…" : "Yes, delete"}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

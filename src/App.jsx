@@ -45,7 +45,7 @@ export default function App() {
   }
 
   async function loadProducts() {
-    const { data } = await supabase.from("products").select("*").order("category");
+    const { data } = await supabase.from("products").select("*").eq("is_active", true).order("category");
     setProducts(data || []);
   }
 
@@ -134,6 +134,20 @@ export default function App() {
     await loadProducts();
   }
 
+  async function updateProduct(productId, fields) {
+    await supabase.from("products").update(fields).eq("id", productId);
+    await loadProducts();
+  }
+
+  // Soft-delete: the product disappears from the shop and product list
+  // immediately, same as a real delete from the owner's point of view, but
+  // it stays in the database so past orders/receipts that included it still
+  // display correctly instead of breaking.
+  async function deleteProduct(productId) {
+    await supabase.from("products").update({ is_active: false }).eq("id", productId);
+    await loadProducts();
+  }
+
   // Records an in-person sale rung up via barcode scanning at the Quick
   // Sale tab. Stock has already been decremented live as each item was
   // scanned — this just creates the order record so it shows up correctly
@@ -195,6 +209,8 @@ export default function App() {
           onUpdateStock={updateStock}
           onAddProduct={addProduct}
           onUpdatePrice={updatePrice}
+          onUpdateProduct={updateProduct}
+          onDeleteProduct={deleteProduct}
           onFinishSale={recordWalkInSale}
           onAddDebt={addDebt}
           onRecordPayment={recordDebtPayment}
