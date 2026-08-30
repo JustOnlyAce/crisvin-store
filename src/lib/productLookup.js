@@ -6,11 +6,29 @@
 // this lookup only matters the very first time a given item is scanned.
 
 const CATEGORY_KEYWORDS = {
-  "Beverages": ["beverage", "drink", "juice", "soda", "water", "coffee", "tea", "milk"],
-  "Snacks": ["snack", "chip", "cracker", "candy", "chocolate", "cookie", "biscuit"],
+  "Beverages": ["beverage", "drink", "juice", "soda", "water", "coffee", "tea"],
+  "Dairy & Chilled Products": ["dairy", "milk", "cheese", "yogurt", "yoghurt", "butter", "chilled"],
+  "Snacks": ["snack", "chip", "candy", "chocolate"],
+  "Biscuits": ["biscuit", "cracker", "cookie"],
   "Canned Goods": ["canned", "can-food", "tinned", "preserved"],
   "Rice & Grains": ["rice", "grain", "cereal", "pasta", "noodle"],
-  "Household": ["detergent", "cleaning", "soap", "household"],
+  "Egg": ["egg"],
+  "Detergent": ["detergent", "laundry"],
+  "Dishwashing Liquid": ["dishwashing", "dish soap", "dish-soap"],
+  "Bleach": ["bleach", "whitening-agent"],
+  "Sponges": ["sponge", "scrub"],
+  "Disposables": ["disposable", "paper-plate", "paper-cup", "tissue", "napkin"],
+  "Plastic Bags": ["plastic-bag", "garbage-bag", "trash-bag"],
+  "Shampoo": ["shampoo", "hair-care"],
+  "Soap": ["soap", "body-wash"],
+  "Toothpaste": ["toothpaste", "oral-care", "dental-care"],
+  "Deodorant": ["deodorant", "antiperspirant"],
+  "Diapers": ["diaper", "nappy"],
+  "Baby Wipes": ["baby-wipe", "wet-wipe"],
+  "Batteries": ["battery", "batteries"],
+  "Cigarette": ["cigarette", "tobacco"],
+  "Dog Food": ["dog-food", "pet-food"],
+  "Household": ["household", "cleaning"],
 };
 
 function guessCategory(text = "") {
