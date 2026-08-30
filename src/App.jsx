@@ -198,8 +198,7 @@ export default function App() {
           onFinishSale={recordWalkInSale}
           onAddDebt={addDebt}
           onRecordPayment={recordDebtPayment}
-          onSwitchRole={() => setMode(null)}
-          onLock={() => {
+          onSwitchRole={() => {
             setOwnerUnlocked(false);
             localStorage.removeItem("crisvin_owner_unlocked");
             setMode(null);
