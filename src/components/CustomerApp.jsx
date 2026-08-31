@@ -17,8 +17,21 @@ export default function CustomerApp({ customer, products, orders, onPlaceOrder, 
   const total = cartItems.reduce((sum, i) => sum + i.price * i.qty, 0);
   const cartCount = cartItems.reduce((sum, i) => sum + i.qty, 0);
 
+  const [maxReachedId, setMaxReachedId] = useState(null);
+
   const addToCart = (id) => setCart((c) => ({ ...c, [id]: (c[id] || 0) + 1 }));
-  const changeQty = (id, delta) => setCart((c) => ({ ...c, [id]: Math.max(0, (c[id] || 0) + delta) }));
+  const changeQty = (id, delta, stock) => {
+    setCart((c) => {
+      const current = c[id] || 0;
+      const next = current + delta;
+      if (delta > 0 && next > stock) {
+        setMaxReachedId(id);
+        setTimeout(() => setMaxReachedId((cur) => (cur === id ? null : cur)), 1800);
+        return c; // ignore the tap, stay at current qty
+      }
+      return { ...c, [id]: Math.max(0, next) };
+    });
+  };
 
   const placeOrder = async () => {
     setPlacing(true);
@@ -61,11 +74,16 @@ export default function CustomerApp({ customer, products, orders, onPlaceOrder, 
                   {qty === 0 ? (
                     <button disabled={outOfStock} onClick={() => addToCart(p.id)} style={{ ...btnSmall, opacity: outOfStock ? 0.35 : 1, cursor: outOfStock ? "not-allowed" : "pointer" }}>Add</button>
                   ) : (
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#2F5233", borderRadius: 8, padding: "6px 10px" }}>
-                      <button onClick={() => changeQty(p.id, -1)} style={qtyBtn}>−</button>
-                      <span style={{ color: "#FAF7F0", fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" }}>{qty}</span>
-                      <button onClick={() => changeQty(p.id, 1)} style={qtyBtn} disabled={qty >= p.stock}>+</button>
-                    </div>
+                    <>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#2F5233", borderRadius: 8, padding: "6px 10px" }}>
+                        <button onClick={() => changeQty(p.id, -1, p.stock)} style={qtyBtn}>−</button>
+                        <span style={{ color: "#FAF7F0", fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" }}>{qty}</span>
+                        <button onClick={() => changeQty(p.id, 1, p.stock)} style={{ ...qtyBtn, opacity: qty >= p.stock ? 0.5 : 1 }}>+</button>
+                      </div>
+                      {maxReachedId === p.id && (
+                        <p style={{ fontSize: 10.5, color: "#C1440E", textAlign: "center", marginTop: 4 }}>That's all we have in stock!</p>
+                      )}
+                    </>
                   )}
                 </div>
               );
