@@ -8,7 +8,7 @@ import QuickSale from "./QuickSale";
 
 const peso = (n) => `₱${Number(n).toFixed(2)}`;
 
-export default function OwnerApp({ products, orders, debts, onAdvanceOrder, onUpdateStock, onAddProduct, onUpdatePrice, onUpdateProduct, onDeleteProduct, onFinishSale, onAddDebt, onRecordPayment, onSwitchRole }) {
+export default function OwnerApp({ products, orders, debts, onAdvanceOrder, onUpdateStock, onAddProduct, onUpdatePrice, onUpdateProduct, onDeleteProduct, onUploadImage, onFinishSale, onAddDebt, onRecordPayment, onSwitchRole }) {
   const [tab, setTab] = useState("orders");
   const [printingOrder, setPrintingOrder] = useState(null);
   const pendingCount = orders.filter((o) => o.status === "Pending").length;
@@ -92,7 +92,7 @@ export default function OwnerApp({ products, orders, debts, onAdvanceOrder, onUp
 
       {tab === "quicksale" && <QuickSale products={products} onUpdateStock={onUpdateStock} onFinishSale={onFinishSale} onPrint={handlePrint} />}
 
-      {tab === "products" && <ProductsTab products={products} onUpdateStock={onUpdateStock} onAddProduct={onAddProduct} onUpdatePrice={onUpdatePrice} onUpdateProduct={onUpdateProduct} onDeleteProduct={onDeleteProduct} />}
+      {tab === "products" && <ProductsTab products={products} onUpdateStock={onUpdateStock} onAddProduct={onAddProduct} onUpdatePrice={onUpdatePrice} onUpdateProduct={onUpdateProduct} onDeleteProduct={onDeleteProduct} onUploadImage={onUploadImage} />}
 
       {tab === "sales" && (
         <div style={{ padding: "4px 16px 16px" }}>
@@ -121,7 +121,7 @@ export default function OwnerApp({ products, orders, debts, onAdvanceOrder, onUp
   );
 }
 
-function ProductsTab({ products, onUpdateStock, onAddProduct, onUpdatePrice, onUpdateProduct, onDeleteProduct }) {
+function ProductsTab({ products, onUpdateStock, onAddProduct, onUpdatePrice, onUpdateProduct, onDeleteProduct, onUploadImage }) {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
 
@@ -138,6 +138,7 @@ function ProductsTab({ products, onUpdateStock, onAddProduct, onUpdatePrice, onU
             if (!error) setShowForm(false);
             return error;
           }}
+          onUploadImage={onUploadImage}
         />
       )}
 
@@ -184,6 +185,7 @@ function ProductsTab({ products, onUpdateStock, onAddProduct, onUpdatePrice, onU
                   setEditingId(null);
                 }}
                 onCancel={() => setEditingId(null)}
+                onUploadImage={onUploadImage}
               />
             )}
           </div>
@@ -193,10 +195,11 @@ function ProductsTab({ products, onUpdateStock, onAddProduct, onUpdatePrice, onU
   );
 }
 
-function ProductSettingsPanel({ product, onSave, onDelete, onCancel }) {
+function ProductSettingsPanel({ product, onSave, onDelete, onCancel, onUploadImage }) {
   const [name, setName] = useState(product.name);
   const [category, setCategory] = useState(product.category);
   const [price, setPrice] = useState(product.price);
+  const [imageUrl, setImageUrl] = useState(product.image_url || "");
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -218,13 +221,15 @@ function ProductSettingsPanel({ product, onSave, onDelete, onCancel }) {
       <label style={label}>Price (₱)</label>
       <input value={price} onChange={(e) => setPrice(e.target.value)} type="number" style={input} />
 
+      <PhotoPicker imageUrl={imageUrl} setImageUrl={setImageUrl} onUploadImage={onUploadImage} />
+
       <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
         <button onClick={onCancel} style={{ ...linkBtn, flex: 1, textAlign: "center", padding: "10px" }}>Cancel</button>
         <button
           disabled={!canSave || saving}
           onClick={async () => {
             setSaving(true);
-            await onSave({ name: name.trim(), category, price: Number(price) });
+            await onSave({ name: name.trim(), category, price: Number(price), image_url: imageUrl.trim() || null });
             setSaving(false);
           }}
           style={{ ...btnPrimary, flex: 2, opacity: canSave ? 1 : 0.4 }}
@@ -263,7 +268,74 @@ function ProductSettingsPanel({ product, onSave, onDelete, onCancel }) {
   );
 }
 
-function AddProductForm({ onAdd }) {
+function PhotoPicker({ imageUrl, setImageUrl, onUploadImage }) {
+  const [imageError, setImageError] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = React.useRef(null);
+
+  const handleFileSelect = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setImageError(false);
+    const result = await onUploadImage(file);
+    if (result.error) {
+      setImageError(true);
+    } else {
+      setImageUrl(result.url);
+    }
+    setUploading(false);
+    e.target.value = ""; // allow picking the same file again if needed
+  };
+
+  return (
+    <>
+      <label style={label}>Product photo</label>
+      <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+        <div style={{ width: 56, height: 56, borderRadius: 8, background: "#EFEAE0", flexShrink: 0, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          {uploading ? (
+            <span style={{ fontSize: 11, color: "#8C6A4A" }}>...</span>
+          ) : imageUrl && !imageError ? (
+            <img src={imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={() => setImageError(true)} />
+          ) : (
+            <span style={{ fontSize: 20 }}>📦</span>
+          )}
+        </div>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            style={{ ...btnSmall, width: "100%", background: "#8C6A4A" }}
+          >
+            {uploading ? "Uploading…" : "📷 Take photo / choose file"}
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={handleFileSelect}
+            style={{ display: "none" }}
+          />
+          <input
+            value={imageUrl}
+            onChange={(e) => { setImageUrl(e.target.value); setImageError(false); }}
+            placeholder="...or paste an image link"
+            style={{ ...input, fontSize: 12.5 }}
+          />
+        </div>
+      </div>
+      {imageError && (
+        <p style={{ fontSize: 12, color: "#C1440E", marginTop: 6 }}>
+          Couldn't load that image — from Google Images, use "Open image in new tab" and copy that page's link, instead of "Copy image address."
+        </p>
+      )}
+    </>
+  );
+}
+
+function AddProductForm({ onAdd, onUploadImage }) {
   const [name, setName] = useState("");
   const [category, setCategory] = useState(STORE_CONFIG.categories[1] || "");
   const [price, setPrice] = useState("");
@@ -351,22 +423,7 @@ function AddProductForm({ onAdd }) {
         </div>
       </div>
 
-      <label style={label}>Product photo</label>
-      <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-        <div style={{ width: 56, height: 56, borderRadius: 8, background: "#EFEAE0", flexShrink: 0, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          {imageUrl ? (
-            <img src={imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={() => setImageUrl("")} />
-          ) : (
-            <span style={{ fontSize: 20 }}>📦</span>
-          )}
-        </div>
-        <input
-          value={imageUrl}
-          onChange={(e) => setImageUrl(e.target.value)}
-          placeholder="Auto-filled from scan, or paste an image link"
-          style={{ ...input, flex: 1 }}
-        />
-      </div>
+      <PhotoPicker imageUrl={imageUrl} setImageUrl={setImageUrl} onUploadImage={onUploadImage} />
 
       {error && <p style={{ color: "#C1440E", fontSize: 12.5, marginTop: 10 }}>{error}</p>}
 

@@ -139,6 +139,18 @@ export default function App() {
     await loadProducts();
   }
 
+  // Uploads a photo taken/picked on the device to Supabase Storage and
+  // returns a public URL for it. Used by both the Add Product form and the
+  // per-product edit panel.
+  async function uploadProductImage(file) {
+    const ext = file.name.split(".").pop();
+    const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const { error } = await supabase.storage.from("product-images").upload(fileName, file);
+    if (error) return { error };
+    const { data } = supabase.storage.from("product-images").getPublicUrl(fileName);
+    return { url: data.publicUrl };
+  }
+
   // Soft-delete: the product disappears from the shop and product list
   // immediately, same as a real delete from the owner's point of view, but
   // it stays in the database so past orders/receipts that included it still
@@ -211,6 +223,7 @@ export default function App() {
           onUpdatePrice={updatePrice}
           onUpdateProduct={updateProduct}
           onDeleteProduct={deleteProduct}
+          onUploadImage={uploadProductImage}
           onFinishSale={recordWalkInSale}
           onAddDebt={addDebt}
           onRecordPayment={recordDebtPayment}
