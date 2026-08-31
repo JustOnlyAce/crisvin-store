@@ -53,8 +53,8 @@ export default function CustomerApp({ customer, products, orders, onPlaceOrder, 
                   ) : (
                     <div style={{ width: "100%", height: 80, borderRadius: 8, background: "#EFEAE0", marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 }}>📦</div>
                   )}
-                  <span style={{ fontSize: 11, color: outOfStock ? "#C1440E" : "#2F5233", fontWeight: 600 }}>
-                    {outOfStock ? "OUT OF STOCK" : "IN STOCK"}
+                  <span style={{ fontSize: 11, color: outOfStock || p.stock <= STORE_CONFIG.lowStockThreshold ? "#C1440E" : "#2F5233", fontWeight: 600 }}>
+                    {outOfStock ? "OUT OF STOCK" : p.stock <= STORE_CONFIG.lowStockThreshold ? `Only ${p.stock} left` : "IN STOCK"}
                   </span>
                   <div style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.3, margin: "8px 0 6px", minHeight: 36 }}>{p.name}</div>
                   <div style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 16, color: "#2F5233", marginBottom: 10 }}>{peso(p.price)}</div>

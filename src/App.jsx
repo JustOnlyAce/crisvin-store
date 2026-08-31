@@ -110,6 +110,21 @@ export default function App() {
     await loadOrders();
   }
 
+  // Cancels a pending order and restores the stock that was deducted when
+  // it was placed — the fix for a customer ordering a bunch of stuff and
+  // never showing up to pay/pick it up.
+  async function cancelOrder(order) {
+    for (const item of order.order_items) {
+      const product = products.find((p) => p.id === item.product_id);
+      if (product) {
+        await supabase.from("products").update({ stock: product.stock + item.quantity }).eq("id", item.product_id);
+      }
+    }
+    await supabase.from("orders").update({ status: "Cancelled" }).eq("id", order.id);
+    await loadProducts();
+    await loadOrders();
+  }
+
   async function updateStock(productId, delta) {
     const product = products.find((p) => p.id === productId);
     if (!product) return;
@@ -218,6 +233,7 @@ export default function App() {
           orders={orders}
           debts={debts}
           onAdvanceOrder={advanceOrderStatus}
+          onCancelOrder={cancelOrder}
           onUpdateStock={updateStock}
           onAddProduct={addProduct}
           onUpdatePrice={updatePrice}

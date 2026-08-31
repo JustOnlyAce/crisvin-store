@@ -76,6 +76,7 @@ export function StatusPill({ status }) {
     Pending: { bg: "#FBEFD9", fg: "#8C6A4A" },
     "Ready for Pickup": { bg: "#E7EEE3", fg: "#2F5233" },
     Completed: { bg: "#EFEAE0", fg: "#5B5346" },
+    Cancelled: { bg: "#FBE4DC", fg: "#C1440E" },
   };
   const c = colors[status] || colors.Pending;
   return <span style={{ background: c.bg, color: c.fg, fontSize: 11, fontWeight: 700, padding: "4px 9px", borderRadius: 20 }}>{status}</span>;

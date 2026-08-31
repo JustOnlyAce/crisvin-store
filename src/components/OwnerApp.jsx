@@ -8,9 +8,10 @@ import QuickSale from "./QuickSale";
 
 const peso = (n) => `₱${Number(n).toFixed(2)}`;
 
-export default function OwnerApp({ products, orders, debts, onAdvanceOrder, onUpdateStock, onAddProduct, onUpdatePrice, onUpdateProduct, onDeleteProduct, onUploadImage, onFinishSale, onAddDebt, onRecordPayment, onSwitchRole }) {
+export default function OwnerApp({ products, orders, debts, onAdvanceOrder, onCancelOrder, onUpdateStock, onAddProduct, onUpdatePrice, onUpdateProduct, onDeleteProduct, onUploadImage, onFinishSale, onAddDebt, onRecordPayment, onSwitchRole }) {
   const [tab, setTab] = useState("orders");
   const [printingOrder, setPrintingOrder] = useState(null);
+  const [cancelingId, setCancelingId] = useState(null);
   const pendingCount = orders.filter((o) => o.status === "Pending").length;
 
   const handlePrint = (order) => {
@@ -20,11 +21,11 @@ export default function OwnerApp({ products, orders, debts, onAdvanceOrder, onUp
   };
 
   const today = new Date().toDateString();
-  const todaysOrders = orders.filter((o) => new Date(o.placed_at).toDateString() === today);
+  const todaysOrders = orders.filter((o) => o.status !== "Cancelled" && new Date(o.placed_at).toDateString() === today);
   const todaysTotal = todaysOrders.reduce((sum, o) => sum + Number(o.total), 0);
   const bestSellers = useMemo(() => {
     const counts = {};
-    orders.forEach((o) => o.order_items.forEach((i) => (counts[i.product_name] = (counts[i.product_name] || 0) + i.quantity)));
+    orders.filter((o) => o.status !== "Cancelled").forEach((o) => o.order_items.forEach((i) => (counts[i.product_name] = (counts[i.product_name] || 0) + i.quantity)));
     return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 5);
   }, [orders]);
 
@@ -70,19 +71,37 @@ export default function OwnerApp({ products, orders, debts, onAdvanceOrder, onUp
                       </div>
                     ))}
                   </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, color: "#2F5233" }}>{peso(o.total)}</span>
-                    <div style={{ display: "flex", gap: 8 }}>
-                      <button onClick={() => handlePrint(o)} style={{ ...btnSmall, background: "#8C6A4A", width: "auto", padding: "8px 12px" }}>
-                        🖨 Print
-                      </button>
-                      {o.status !== "Completed" && (
-                        <button onClick={() => onAdvanceOrder(o.id, o.status)} style={{ ...btnSmall, width: "auto", padding: "8px 12px" }}>
-                          {o.status === "Pending" ? "Mark Ready" : "Mark Completed"}
-                        </button>
-                      )}
+
+                  {cancelingId === o.id ? (
+                    <div style={{ textAlign: "center", padding: "6px 0" }}>
+                      <p style={{ fontSize: 12, color: "#C1440E", marginBottom: 8 }}>
+                        Cancel this order? Stock will be restored.
+                      </p>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button onClick={() => setCancelingId(null)} style={{ ...linkBtn, flex: 1, textAlign: "center", padding: "8px" }}>Keep it</button>
+                        <button onClick={() => { onCancelOrder(o); setCancelingId(null); }} style={{ ...btnSmall, flex: 1, background: "#C1440E" }}>Yes, cancel</button>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, color: "#2F5233" }}>{peso(o.total)}</span>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button onClick={() => handlePrint(o)} style={{ ...btnSmall, background: "#8C6A4A", width: "auto", padding: "8px 12px" }}>
+                          🖨 Print
+                        </button>
+                        {o.status === "Pending" && (
+                          <button onClick={() => setCancelingId(o.id)} style={{ ...btnSmall, width: "auto", padding: "8px 12px", background: "transparent", color: "#C1440E", border: "1px solid #C1440E" }}>
+                            Cancel
+                          </button>
+                        )}
+                        {o.status !== "Completed" && o.status !== "Cancelled" && (
+                          <button onClick={() => onAdvanceOrder(o.id, o.status)} style={{ ...btnSmall, width: "auto", padding: "8px 12px" }}>
+                            {o.status === "Pending" ? "Mark Ready" : "Mark Completed"}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

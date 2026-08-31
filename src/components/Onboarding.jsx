@@ -17,10 +17,19 @@ export function RoleGate({ onPick }) {
   );
 }
 
+// Accepts 09XXXXXXXXX (11 digits) or +639XXXXXXXXX, ignoring spaces/dashes —
+// the two common ways people write a PH mobile number.
+function isValidPhone(raw) {
+  const cleaned = raw.replace(/[\s-]/g, "");
+  return /^(09\d{9}|\+639\d{9})$/.test(cleaned);
+}
+
 export function CustomerLogin({ onLogin, onBack }) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const canSubmit = name.trim().length > 1 && phone.trim().length >= 7;
+  const [touched, setTouched] = useState(false);
+  const phoneValid = isValidPhone(phone);
+  const canSubmit = name.trim().length > 1 && phoneValid;
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", justifyContent: "center", padding: 24 }}>
@@ -31,7 +40,18 @@ export function CustomerLogin({ onLogin, onBack }) {
         <label style={label}>Your name</label>
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Maria Santos" style={input} />
         <label style={label}>Mobile number</label>
-        <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="09XX XXX XXXX" style={input} />
+        <input
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          onBlur={() => setTouched(true)}
+          placeholder="09XX XXX XXXX"
+          style={input}
+        />
+        {touched && phone.trim() && !phoneValid && (
+          <p style={{ fontSize: 12, color: "#C1440E", marginTop: 6 }}>
+            Enter a valid PH mobile number, e.g. 09171234567.
+          </p>
+        )}
         <button
           disabled={!canSubmit}
           onClick={() => onLogin({ name: name.trim(), phone: phone.trim() })}
