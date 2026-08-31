@@ -81,7 +81,7 @@ export default function CustomerApp({ customer, products, orders, onPlaceOrder, 
                         <button onClick={() => changeQty(p.id, 1, p.stock)} style={{ ...qtyBtn, opacity: qty >= p.stock ? 0.5 : 1 }}>+</button>
                       </div>
                       {maxReachedId === p.id && (
-                        <p style={{ fontSize: 10.5, color: "#C1440E", textAlign: "center", marginTop: 4 }}>That's all we have in stock!</p>
+                        <p style={{ fontSize: 10.5, color: "#C1440E", textAlign: "center", marginTop: 4 }}>Not enough stocks!</p>
                       )}
                     </>
                   )}
